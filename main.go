@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -17,7 +16,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const httpServerUrl = "http://localhost:8080"
+const (
+	httpServerUrl = "http://localhost:8080"
+	httpAddr      = ":8080"
+	promhttpAddr  = ":9000"
+)
 
 var (
 	http200RequestCounter = 0
@@ -170,12 +173,11 @@ func main() {
 
 	done := make(chan bool, 1)
 
-	const addr = ":8080"
 	server := &http.Server{
-		Addr:    addr,
+		Addr:    httpAddr,
 		Handler: router(),
 	}
-	log.Infof("HttpServer listening on '%s'", addr)
+	log.Infof("HttpServer listening on '%s'", httpAddr)
 	go func() {
 		log.Fatal(server.ListenAndServe())
 	}()
@@ -191,17 +193,16 @@ func main() {
 	prometheus.MustRegister(exporter)
 
 	http.Handle("/metrics", promhttp.Handler())
-	log.Infof("HttpServer listening on '%s'", ":9000")
+	log.Infof("PromHttpServer listening on '%s'", promhttpAddr)
 	go func() {
-		log.Fatal(http.ListenAndServe(":9000", nil))
+		log.Fatal(http.ListenAndServe(promhttpAddr, nil))
 	}()
 
 	go func() {
 		sig := <-sigs
-		fmt.Println()
-		fmt.Println(sig)
+		log.Info(sig)
 		done <- true
 	}()
 	<-done
-	log.Info("exiting")
+	log.Info("Exiting")
 }
